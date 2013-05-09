@@ -78,6 +78,7 @@ PRODUCT_PACKAGES := \
     libsync \
     lights.exynos4 \
     macloader \
+    power.exynos4 \
     tinymix \
     Torch    
 
