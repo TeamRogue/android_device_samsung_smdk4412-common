@@ -127,13 +127,15 @@ static void configure_governor()
     if (strncmp(governor, "ondemand", 8) == 0) {
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/up_threshold", "90");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/io_is_busy", "1");
-        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor", "4");
+        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor", "2");
+        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/freq_step", "10");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/down_differential", "10");
 
     } else if (strncmp(governor, "interactive", 11) == 0) {
         sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/min_sample_time", "40000");
         sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/io_is_busy", "1");
         sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/hispeed_freq", "1000000");
+        sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load", "90");
         sysfs_write("/sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay", "80000");
     }
 }
@@ -189,7 +191,7 @@ static void cm_power_hint(struct power_module *module, power_hint_t hint,
 
             if (len < 0) {
                 strerror_r(errno, buf, sizeof(buf));
-	            ALOGE("Error writing to boostpulse: %s\n", buf);
+                ALOGE("Error writing to boostpulse: %s\n", buf);
 
                 pthread_mutex_lock(&cm->lock);
                 close(cm->boostpulse_fd);
