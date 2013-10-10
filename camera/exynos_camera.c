@@ -489,6 +489,7 @@ int exynos_camera_params_init(struct exynos_camera *exynos_camera, int id)
 	}
 
 	// AE lock
+
 	if (exynos_camera->config->presets[id].params.auto_exposure_lock_supported == 1) {
 		exynos_param_string_set(exynos_camera, "auto-exposure-lock-supported", "true");
 
@@ -499,6 +500,7 @@ int exynos_camera_params_init(struct exynos_camera *exynos_camera, int id)
 	}
 
 	// AWB lock
+
 	if (exynos_camera->config->presets[id].params.auto_white_balance_lock_supported == 1) {
 		exynos_param_string_set(exynos_camera, "auto-whitebalance-lock-supported", "true");
 
@@ -628,9 +630,11 @@ int exynos_camera_params_apply(struct exynos_camera *exynos_camera, int force)
 	int zoom, max_zoom;
 
 	char *ae_lock_supported_string;
+	char *ae_lock_string;
 	int ae_lock = 0;
 
 	char *awb_lock_supported_string;
+	char *awb_lock_string;
 	int awb_lock = 0;
 	int aeawb = 0;
 
@@ -926,26 +930,28 @@ int exynos_camera_params_apply(struct exynos_camera *exynos_camera, int force)
 	// AE lock
 
 	ae_lock_supported_string = exynos_param_string_get(exynos_camera, "auto-exposure-lock-supported");
-	if (ae_lock_supported_string != NULL && strcmp(ae_lock_supported_string, "true") == 0) {
-		ae_lock = strcmp(exynos_param_string_get(exynos_camera, "auto-exposure-lock"), "true") ? 1 : 0;
-	}
+	ae_lock_string = exynos_param_string_get(exynos_camera, "auto-exposure-lock");
+	if (ae_lock_supported_string != NULL && ae_lock_string != NULL && strcmp(ae_lock_supported_string, "true") == 0 && strcmp(ae_lock_string, "true") == 0)
+		ae_lock = 1;
+	else
+		ae_lock = 0;
 
 	// AWB lock
 
 	awb_lock_supported_string = exynos_param_string_get(exynos_camera, "auto-whitebalance-lock-supported");
-	if (awb_lock_supported_string != NULL && strcmp(awb_lock_supported_string, "true") == 0) {
-		awb_lock = strcmp(exynos_param_string_get(exynos_camera, "auto-whitebalance-lock"), "true") ? 1 : 0;
-	}
+	awb_lock_string = exynos_param_string_get(exynos_camera, "auto-whitebalance-lock");
+	if (awb_lock_supported_string != NULL && awb_lock_string != NULL && strcmp(awb_lock_supported_string, "true") == 0 && strcmp(awb_lock_string, "true") == 0)
+		awb_lock = 1;
+	else
+		awb_lock = 0;
 
-	if ( (ae_lock != exynos_camera->ae_lock) || (awb_lock != exynos_camera->awb_lock) || force ) {
+	if (ae_lock != exynos_camera->ae_lock || awb_lock != exynos_camera->awb_lock || force) {
+		exynos_camera->ae_lock = ae_lock;
+		exynos_camera->awb_lock = awb_lock;
 		aeawb = (ae_lock ? 0x1 : 0x0) | (awb_lock ? 0x2 : 0x0);
 		rc = exynos_v4l2_s_ctrl(exynos_camera, 0, V4L2_CID_CAMERA_AEAWB_LOCK_UNLOCK, aeawb);
 		if (rc < 0)
-			ALOGE("%s:Unable to set AEAWB lock", __func__);
-		else {
-			exynos_camera->ae_lock = ae_lock;
-			exynos_camera->awb_lock = awb_lock;
-		}
+			ALOGE("%s: Unable to set AEAWB lock", __func__);
 	}
 
 	// Flash
@@ -2597,6 +2603,11 @@ int exynos_camera_picture_callback(struct exynos_camera *exynos_camera,
 	pthread_mutex_lock(&exynos_camera->picture_mutex);
 
 	if (!exynos_camera->picture_enabled && !exynos_camera->camera_fimc_is) {
+		if (exynos_camera->focus_mode == FOCUS_MODE_CONTINOUS_PICTURE && exynos_camera->capture_auto_focus_result == CAMERA_AF_STATUS_IN_PROGRESS) {
+			pthread_mutex_unlock(&exynos_camera->picture_mutex);
+			return 0;
+		}
+
 		rc = exynos_v4l2_s_ctrl(exynos_camera, 0, V4L2_CID_CAMERA_CAPTURE, 0);
 		if (rc < 0) {
 			ALOGE("%s: Unable to set capture", __func__);
